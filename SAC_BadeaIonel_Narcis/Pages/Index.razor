@@ -1,0 +1,50 @@
+﻿@page "/"
+
+@using BlazorStrap
+@using BlazorAnimate
+@inject NavigationManager Navigation
+
+<PageTitle>Index</PageTitle>
+
+
+<div class="container">
+    <div class="text-center">
+        <h1 class="display-4">Welcome to </h1>
+        <h1 class="display-4">Securitatea Aplicațiilor Cloud</h1>
+        <p class="lead">Manage and secure your cloud applications with ease.</p>
+    </div>
+    <AuthorizeView>
+        <NotAuthorized>
+            <div class="text-center my-3">
+                <h2 class="h3">Get Started</h2>
+                <p>Log in to start managing your profile and users:</p>
+                <a href="MicrosoftIdentity/Account/SignIn" class="btn btn-primary btn-lg mx-2 animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">Login</a>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+    <div class="row my-5">
+        <div class="col-md-4 text-center">
+            <i class="bi bi-person-circle display-1 text-primary"></i>
+            <h2 class="h4 mt-3">Profile Management</h2>
+            <p>Easily view and edit your profile details including display name, email, and more.</p>
+        </div>
+        <div class="col-md-4 text-center">
+            <i class="bi bi-people display-1 text-success"></i>
+            <h2 class="h4 mt-3">User Management</h2>
+            <p>View and manage all users in your system, update user details, and control account statuses.</p>
+        </div>
+        <div class="col-md-4 text-center">
+            <i class="bi bi-shield-lock display-1 text-danger"></i>
+            <h2 class="h4 mt-3">Security</h2>
+            <p>Ensure the security of your applications with robust user authentication and management features.</p>
+        </div>
+    </div>
+</div>
+<style>
+    .container {
+        max-width: 800px;
+    }
+</style>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.8.1/font/bootstrap-icons.css" rel="stylesheet" />

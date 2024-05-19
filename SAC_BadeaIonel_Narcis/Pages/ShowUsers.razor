@@ -1,0 +1,62 @@
+@page "/showusers"
+@attribute [Authorize]
+
+@using Microsoft.Identity.Web
+@using Microsoft.Graph
+@inject Microsoft.Graph.GraphServiceClient GraphServiceClient
+@inject MicrosoftIdentityConsentAndConditionalAccessHandler ConsentHandler
+
+<h1>All Users</h1>
+
+@if (users == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table table-striped table-condensed" style="font-family: monospace">
+        <tr>
+            <th>Display Name</th>
+            <th>E-Mail</th>
+        </tr>
+        @foreach (var u in users)
+        {
+            <tr>
+                <td><a href="/showprofile/@u.Id">@u.DisplayName</a></td>
+                <td>@ExtractEmail(@u.UserPrincipalName)</td>
+            </tr>
+        }
+    </table>
+}
+
+@code {
+    IEnumerable<User> users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var usersList = await GraphServiceClient.Users.Request().GetAsync();
+            users = usersList.CurrentPage;
+            foreach (var user in users)
+            {
+                
+            }
+        }
+        catch (Exception ex)
+        {
+            ConsentHandler.HandleException(ex);
+        }
+    }
+
+    string ExtractEmail(string userPrincipalName)
+    {
+        if (string.IsNullOrEmpty(userPrincipalName))
+            return string.Empty;
+
+        var emailPart = userPrincipalName.Split("#EXT#", StringSplitOptions.None)[0];
+
+        return emailPart.Replace('_', '@');
+    }
+
+}

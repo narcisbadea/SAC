@@ -1,0 +1,172 @@
+@page "/showprofile"
+@attribute [Authorize]
+
+@using Microsoft.Identity.Web
+@using Microsoft.Graph
+@inject GraphServiceClient GraphServiceClient
+@inject MicrosoftIdentityConsentAndConditionalAccessHandler ConsentHandler
+@inject IJSRuntime JS
+
+<div class="container mt-5">
+    <h1>User Profile</h1>
+
+    @if (user == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <EditForm Model="@user" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <div class="row">
+                <div class="col-md-8">
+                    <table class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Property</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Id</td>
+                                <td>@user.Id</td>
+                            </tr>
+                            <tr>
+                                <td>Display Name</td>
+                                <td><InputText @bind-Value="user.DisplayName" class="form-control" /></td>
+                            </tr>
+                            <tr>
+                                <td>E-Mail</td>
+                                <td>@ExtractEmail(@user.UserPrincipalName)</td>
+                            </tr>
+                            <tr>
+                                <td>Given Name</td>
+                                <td><InputText @bind-Value="user.GivenName" class="form-control" /></td>
+                            </tr>
+                            <tr>
+                                <td>Surname</td>
+                                <td><InputText @bind-Value="user.Surname" class="form-control" /></td>
+                            </tr>
+                            <tr>
+                                <td>Title</td>
+                                <td><InputText @bind-Value="user.JobTitle" class="form-control" /></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-md-4 text-center">
+                    @if (!string.IsNullOrEmpty(photoUrl))
+                    {
+                        <div class="profile-photo">
+                            <img src="@photoUrl" alt="User Photo" class="img-fluid" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="profile-placeholder rounded-circle d-flex justify-content-center align-items-center bg-secondary text-white">
+                            @GetInitials(user.GivenName, user.Surname)
+                        </div>
+                    }
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Save</button>
+        </EditForm>
+    }
+</div>
+
+<style>
+    .profile-photo img {
+        width: 200px;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 50%;
+    }
+
+    .profile-placeholder {
+        width: 200px;
+        height: 200px;
+        font-size: 3em;
+        border-radius: 50%;
+    }
+</style>
+
+@code {
+    User? user;
+    string? photoUrl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserProfile();
+    }
+
+    private async Task LoadUserProfile()
+    {
+        try
+        {
+            user = await GraphServiceClient.Me.Request()
+                .Select(u => new { u.Id, u.DisplayName, u.UserPrincipalName, u.GivenName, u.Surname, u.JobTitle })
+                .GetAsync();
+            
+            await LoadUserPhoto();
+        }
+        catch (Exception ex)
+        {
+            ConsentHandler.HandleException(ex);
+        }
+    }
+
+    private async Task LoadUserPhoto()
+    {
+        try
+        {
+            var photoStream = await GraphServiceClient.Me.Photo.Content.Request().GetAsync();
+            if (photoStream != null)
+            {
+                using (var memoryStream = new MemoryStream())
+                {
+                    await photoStream.CopyToAsync(memoryStream);
+                    var bytes = memoryStream.ToArray();
+                    photoUrl = $"data:image/png;base64,{Convert.ToBase64String(bytes)}";
+                }
+            }
+        }
+        catch (ServiceException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // Handle the case where the user does not have a profile photo
+            photoUrl = null;
+        }
+        catch (Exception ex)
+        {
+            ConsentHandler.HandleException(ex);
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            await GraphServiceClient.Me.Request().UpdateAsync(user);
+            await JS.InvokeVoidAsync("alert", "Profile updated successfully!");
+        }
+        catch (Exception ex)
+        {
+            ConsentHandler.HandleException(ex);
+        }
+    }
+
+    private string ExtractEmail(string userPrincipalName)
+    {
+        if (string.IsNullOrEmpty(userPrincipalName))
+            return string.Empty;
+        var emailPart = userPrincipalName.Split("#EXT#", StringSplitOptions.None)[0];
+        return emailPart.Replace('_', '@');
+    }
+
+    private string GetInitials(string givenName, string surname)
+    {
+        if (string.IsNullOrEmpty(givenName) && string.IsNullOrEmpty(surname))
+            return "N/A";
+        return $"{(string.IsNullOrEmpty(givenName) ? "" : givenName[0].ToString())}{(string.IsNullOrEmpty(surname) ? "" : surname[0].ToString())}".ToUpper();
+    }
+}
